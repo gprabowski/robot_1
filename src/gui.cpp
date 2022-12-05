@@ -219,7 +219,9 @@ void render_performance_window() {
   ImGui::End();
 }
 
-void render_settings_gui(internal::simulation_settings &settings) {
+void render_settings_gui(application_scene &scene) {
+  auto &settings = scene.settings;
+
   ImGui::Begin("Settings");
 
   ImGui::SliderFloat("L1", &settings.l1, 0.f, 100.f);
@@ -229,14 +231,37 @@ void render_settings_gui(internal::simulation_settings &settings) {
   ImGui::SliderFloat("Second Angle", &settings.second_angle, -180.f, 180.f);
   ImGui::SliderFloat("Field Density", &settings.density, 0.f, 500.f);
 
+  ImGui::SliderFloat2("Start Point", glm::value_ptr(settings.start_point),
+                      -100.f, 100.f);
+  ImGui::SliderFloat2("End Point", glm::value_ptr(settings.end_point), -100.f,
+                      100.f);
+
   ImGui::End();
 }
 
 void render_actions_gui(application_scene &scene) {
   ImGui::Begin("Perform Actions");
 
+  if (ImGui::Button("Run")) {
+    scene.check_settings();
+  }
+
   if (ImGui::Button("Add Obstacle")) {
     scene.settings.obstacles.push_back({10.f, 10.f, {0.f, 0.f}});
+  }
+  auto text =
+      scene.imode == input_mode::normal
+          ? "Normal"
+          : (scene.imode == input_mode::start_point ? "Start Point Choice"
+                                                    : "End Point Choice");
+  ImGui::Text("Input Mode: %s", text);
+
+  if (ImGui::Button("Set Start Point")) {
+    scene.imode = input_mode::start_point;
+  }
+
+  if (ImGui::Button("Set End Point")) {
+    scene.imode = input_mode::end_point;
   }
 
   ImGui::End();
@@ -284,7 +309,7 @@ void render_obstacle_gui(application_scene &scene) {
 
 void render(input_state &input, application_scene &scene) {
   render_performance_window();
-  render_settings_gui(scene.settings);
+  render_settings_gui(scene);
   render_actions_gui(scene);
   render_pos_helper(input, scene);
   render_obstacle_gui(scene);

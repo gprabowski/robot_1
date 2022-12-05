@@ -126,64 +126,118 @@ void application_scene::render(input_state &input) {
 }
 
 bool application_scene::handle_mouse(mouse_state &mouse) {
-  if (mouse.just_pressed[mouse_state::mouse_button::right]) {
 
-    const auto view = math::get_view_matrix({0.f, 50.f, 0.f},
-                                            math::vec3{0.f, 50.f, 0.f} +
-                                                math::vec3{0.f, -1.f, 0.f},
-                                            {0.f, 0.f, -1.f});
+  if (imode == input_mode::normal) {
+    if (mouse.just_pressed[mouse_state::mouse_button::right]) {
 
-    auto v_x = glfw_impl::last_frame_info::viewport_area.x;
-    auto v_y = glfw_impl::last_frame_info::viewport_area.y;
+      const auto view = math::get_view_matrix({0.f, 50.f, 0.f},
+                                              math::vec3{0.f, 50.f, 0.f} +
+                                                  math::vec3{0.f, -1.f, 0.f},
+                                              {0.f, 0.f, -1.f});
 
-    const auto proj = math::get_ortho_matrix(
-        -settings.density * v_x / 2.f, settings.density * v_x / 2.f,
-        -settings.density * v_y / 2.f, settings.density * v_y / 2.f, -100.f,
-        100.f);
+      auto v_x = glfw_impl::last_frame_info::viewport_area.x;
+      auto v_y = glfw_impl::last_frame_info::viewport_area.y;
 
-    for (auto &obstacle : settings.obstacles) {
-      const auto obstacle_m = math::get_model_matrix(
-          {obstacle.pos.x, 0.f, obstacle.pos.y},
-          {obstacle.width, 1.f, obstacle.height}, {0.f, 0.f, 0.f});
+      const auto proj = math::get_ortho_matrix(
+          -settings.density * v_x / 2.f, settings.density * v_x / 2.f,
+          -settings.density * v_y / 2.f, settings.density * v_y / 2.f, -100.f,
+          100.f);
 
-      glm::vec4 tmp_obstacle_pos =
-          proj * view * obstacle_m * glm::vec4{0.f, 0.f, 0.f, 1.f};
+      for (auto &obstacle : settings.obstacles) {
+        const auto obstacle_m = math::get_model_matrix(
+            {obstacle.pos.x, 0.f, obstacle.pos.y},
+            {obstacle.width, 1.f, obstacle.height}, {0.f, 0.f, 0.f});
 
-      glm::vec2 obstacle_pos = tmp_obstacle_pos / tmp_obstacle_pos.w;
+        glm::vec4 tmp_obstacle_pos =
+            proj * view * obstacle_m * glm::vec4{0.f, 0.f, 0.f, 1.f};
 
-      obstacle_pos = (obstacle_pos + glm::vec2{1.0f, 1.0f}) / 2.f;
-      obstacle_pos.y = 1 - obstacle_pos.y;
+        glm::vec2 obstacle_pos = tmp_obstacle_pos / tmp_obstacle_pos.w;
 
-      obstacle_pos = {obstacle_pos.x * v_x, obstacle_pos.y * v_y};
+        obstacle_pos = (obstacle_pos + glm::vec2{1.0f, 1.0f}) / 2.f;
+        obstacle_pos.y = 1 - obstacle_pos.y;
 
-      if (glm::length(mouse.last_pos - obstacle_pos) < 50.f) {
-        selected_obstacle = std::ref<internal::obstacle_info>(obstacle);
-        return true;
+        obstacle_pos = {obstacle_pos.x * v_x, obstacle_pos.y * v_y};
+
+        if (glm::length(mouse.last_pos - obstacle_pos) < 50.f) {
+          selected_obstacle = std::ref<internal::obstacle_info>(obstacle);
+          return true;
+        }
       }
+      selected_obstacle.reset();
     }
-    selected_obstacle.reset();
+
+    if (mouse.reoriented.has_value() && selected_obstacle.has_value()) {
+      const auto len_x =
+          glfw_impl::last_frame_info::viewport_area.x * settings.density / 2;
+      const auto len_y =
+          glfw_impl::last_frame_info::viewport_area.y * settings.density / 2;
+
+      glm::vec2 tmp = {mouse.reoriented.value().x /
+                           glfw_impl::last_frame_info::viewport_area.x,
+                       mouse.reoriented.value().y /
+                           glfw_impl::last_frame_info::viewport_area.y};
+
+      tmp -= glm::vec2{0.5f, 0.5f};
+      tmp *= 2;
+      tmp.x *= len_x;
+      tmp.y *= len_y;
+
+      selected_obstacle.value().get().pos = tmp;
+    }
+
+    return false;
+  } else {
+    if (mouse.just_pressed[mouse_state::mouse_button::right]) {
+      const auto len_x =
+          glfw_impl::last_frame_info::viewport_area.x * settings.density / 2;
+      const auto len_y =
+          glfw_impl::last_frame_info::viewport_area.y * settings.density / 2;
+
+      glm::vec2 tmp = {
+          mouse.last_pos.x / glfw_impl::last_frame_info::viewport_area.x,
+          mouse.last_pos.y / glfw_impl::last_frame_info::viewport_area.y};
+
+      tmp -= glm::vec2{0.5f, 0.5f};
+      tmp *= 2;
+      tmp.x *= len_x;
+      tmp.y *= len_y;
+
+      if (imode == input_mode::start_point) {
+        settings.start_point = tmp;
+      } else if (imode == input_mode::end_point) {
+        settings.end_point = tmp;
+      }
+      imode = input_mode::normal;
+      return true;
+    }
   }
-
-  if (mouse.reoriented.has_value() && selected_obstacle.has_value()) {
-    const auto len_x =
-        glfw_impl::last_frame_info::viewport_area.x * settings.density / 2;
-    const auto len_y =
-        glfw_impl::last_frame_info::viewport_area.y * settings.density / 2;
-
-    glm::vec2 tmp = {mouse.reoriented.value().x /
-                         glfw_impl::last_frame_info::viewport_area.x,
-                     mouse.reoriented.value().y /
-                         glfw_impl::last_frame_info::viewport_area.y};
-
-    tmp -= glm::vec2{0.5f, 0.5f};
-    tmp *= 2;
-    tmp.x *= len_x;
-    tmp.y *= len_y;
-
-    selected_obstacle.value().get().pos = tmp;
-  }
-
   return false;
+}
+
+bool application_scene::check_settings() {
+  // check if start and end points are in reach
+  if (glm::length(settings.start_point) > (settings.l1 + settings.l2)) {
+    return false;
+  }
+
+  if (glm::length(settings.end_point) > (settings.l1 + settings.l2)) {
+    return false;
+  }
+
+  // set arms to initial position
+  auto &sp = settings.start_point;
+  sp.y *= -1;
+  settings.second_angle = glm::degrees(
+      std::acos((sp.x * sp.x + sp.y * sp.y - settings.l1 * settings.l1 -
+                 settings.l2 * settings.l2) /
+                (2 * settings.l1 * settings.l2)));
+
+  settings.first_angle = glm::degrees(
+      std::atan((sp.y / sp.x)) -
+      std::atan((settings.l2 * std::sin(glm::radians(settings.second_angle))) /
+                (settings.l1 +
+                 settings.l2 * std::cos(glm::radians(settings.second_angle)))));
+  return true;
 }
 
 } // namespace pusn
