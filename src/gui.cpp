@@ -265,12 +265,29 @@ void render_pos_helper(input_state &input, application_scene &scene) {
 
   ImGui::End();
 }
+void render_obstacle_gui(application_scene &scene) {
+  if (scene.selected_obstacle.has_value()) {
+    ImGui::Begin("Obstacle Edit");
+    auto &obstacle = scene.selected_obstacle.value().get();
+    ImGui::SliderFloat("Width:", &obstacle.width, -100.f, 100.f);
+    ImGui::SliderFloat("Height:", &obstacle.height, -100.f, 100.f);
+    ImGui::SliderFloat2("Position:", glm::value_ptr(obstacle.pos), -500.f,
+                        500.f);
+    if (ImGui::Button("Delete Obstacle")) {
+      scene.selected_obstacle.reset();
+      std::erase_if(scene.settings.obstacles,
+                    [&](auto &ob) { return ob.pos == obstacle.pos; });
+    }
+    ImGui::End();
+  }
+}
 
 void render(input_state &input, application_scene &scene) {
   render_performance_window();
   render_settings_gui(scene.settings);
   render_actions_gui(scene);
   render_pos_helper(input, scene);
+  render_obstacle_gui(scene);
   render_popups();
 }
 

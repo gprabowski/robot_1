@@ -227,7 +227,7 @@ void glfw_impl::mouse_move_callback(GLFWwindow *w, double xpos, double ypos) {
   input_state *input =
       reinterpret_cast<input_state *>(glfwGetWindowUserPointer(w));
 
-  if (input->mouse.pressed[mouse_state::mouse_button::left]) {
+  if (input->mouse.pressed[mouse_state::mouse_button::right]) {
     input->mouse.reoriented = {xpos - 10, ypos - 30};
   }
 }

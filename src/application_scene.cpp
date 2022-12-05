@@ -126,7 +126,7 @@ void application_scene::render(input_state &input) {
 }
 
 bool application_scene::handle_mouse(mouse_state &mouse) {
-  if (mouse.just_pressed[mouse_state::mouse_button::left]) {
+  if (mouse.just_pressed[mouse_state::mouse_button::right]) {
 
     const auto view = math::get_view_matrix({0.f, 50.f, 0.f},
                                             math::vec3{0.f, 50.f, 0.f} +
