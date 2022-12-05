@@ -10,11 +10,9 @@ uniform mat4 proj;
 
 out vec3 frag_pos;
 out vec3 normal;
-out vec3 color;
 
 void main() {
     gl_Position = proj * view * model * vec4(pos, 1.0);
     frag_pos = vec3(model * vec4(pos, 1.0));
     normal = transpose(inverse(mat3(model))) * norm;
-    color = col;
 }

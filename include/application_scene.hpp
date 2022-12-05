@@ -25,7 +25,7 @@ struct obstacle_info {
 
 struct simulation_settings {
   float l1{30.f}, l2{20.f}, width{5.f}, first_angle{0.f}, second_angle{0.f},
-      density{10.f};
+      density{0.25f};
   std::vector<obstacle_info> obstacles;
 };
 
@@ -54,8 +54,12 @@ struct application_scene {
   internal::square_center centered_model;
   internal::square_right right_model;
 
+  std::optional<std::reference_wrapper<internal::obstacle_info>>
+      selected_obstacle;
+
   bool init();
   void render(input_state &input);
+  bool handle_mouse(mouse_state &mouse);
 };
 
 } // namespace pusn

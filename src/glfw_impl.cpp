@@ -209,7 +209,7 @@ void glfw_impl::mouse_button_callback(GLFWwindow *w, int button, int action,
   glfwGetCursorPos(w, &xpos, &ypos);
 
   if (action == GLFW_PRESS) {
-    input->mouse.last_pos = {xpos, ypos};
+    input->mouse.last_pos = {xpos - 10, ypos - 30};
     const auto pos = mbutton_glfw_to_enum(button);
     input->mouse.just_pressed.set(pos);
     input->mouse.pressed.set(pos);
@@ -217,7 +217,7 @@ void glfw_impl::mouse_button_callback(GLFWwindow *w, int button, int action,
 
   if (action == GLFW_RELEASE) {
     const auto pos = mbutton_glfw_to_enum(button);
-    input->mouse.last_pos = {xpos, ypos};
+    input->mouse.last_pos = {xpos - 10, ypos - 30};
     input->mouse.just_pressed.reset(pos);
     input->mouse.pressed.reset(pos);
   }
@@ -227,8 +227,8 @@ void glfw_impl::mouse_move_callback(GLFWwindow *w, double xpos, double ypos) {
   input_state *input =
       reinterpret_cast<input_state *>(glfwGetWindowUserPointer(w));
 
-  if (input->mouse.pressed[mouse_state::mouse_button::right]) {
-    input->mouse.reoriented = {xpos, ypos};
+  if (input->mouse.pressed[mouse_state::mouse_button::left]) {
+    input->mouse.reoriented = {xpos - 10, ypos - 30};
   }
 }
 

@@ -232,9 +232,45 @@ void render_settings_gui(internal::simulation_settings &settings) {
   ImGui::End();
 }
 
+void render_actions_gui(application_scene &scene) {
+  ImGui::Begin("Perform Actions");
+
+  if (ImGui::Button("Add Obstacle")) {
+    scene.settings.obstacles.push_back({10.f, 10.f, {0.f, 0.f}});
+  }
+
+  ImGui::End();
+}
+
+void render_pos_helper(input_state &input, application_scene &scene) {
+  ImGui::Begin("Position Helper");
+
+  ImGui::Text(
+      "X: %f Y: %f",
+      input.mouse.last_pos.x - glfw_impl::last_frame_info::viewport_pos.x -
+          glfw_impl::last_frame_info::viewport_area.x / 2.f,
+      input.mouse.last_pos.y - glfw_impl::last_frame_info::viewport_pos.y -
+          glfw_impl::last_frame_info::viewport_area.y / 2.f);
+
+  auto half_v_x = glfw_impl::last_frame_info::viewport_area.x;
+  auto half_v_y = glfw_impl::last_frame_info::viewport_area.y;
+
+  ImGui::Text("Size X: %f Y: %f", half_v_x, half_v_y);
+
+  static glm::vec2 last_reoriented{0.f, 0.f};
+  if (input.mouse.reoriented.has_value()) {
+    last_reoriented = input.mouse.reoriented.value();
+  }
+  ImGui::Text("Reoriented X: %f Y: %f", last_reoriented.x, last_reoriented.y);
+
+  ImGui::End();
+}
+
 void render(input_state &input, application_scene &scene) {
   render_performance_window();
   render_settings_gui(scene.settings);
+  render_actions_gui(scene);
+  render_pos_helper(input, scene);
   render_popups();
 }
 
