@@ -219,8 +219,22 @@ void render_performance_window() {
   ImGui::End();
 }
 
+void render_settings_gui(internal::simulation_settings &settings) {
+  ImGui::Begin("Settings");
+
+  ImGui::SliderFloat("L1", &settings.l1, 0.f, 100.f);
+  ImGui::SliderFloat("L2", &settings.l2, 0.f, 100.f);
+  ImGui::SliderFloat("Width", &settings.width, 0.f, 100.f);
+  ImGui::SliderFloat("First Angle", &settings.first_angle, -180.f, 180.f);
+  ImGui::SliderFloat("Second Angle", &settings.second_angle, -180.f, 180.f);
+  ImGui::SliderFloat("Field Density", &settings.density, 0.f, 500.f);
+
+  ImGui::End();
+}
+
 void render(input_state &input, application_scene &scene) {
   render_performance_window();
+  render_settings_gui(scene.settings);
   render_popups();
 }
 

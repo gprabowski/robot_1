@@ -18,44 +18,41 @@ namespace internal {
 //    * geometry
 //    * API object reference
 
-struct simulation_settings {};
+struct obstacle_info {
+  float width{2.f}, height{1.f};
+  math::vec2 pos{0.f, 0.f};
+};
 
-struct scene_grid {
-  api_agnostic_geometry geometry{{{math::vec3(-1.0, 0.0, -1.0), {}, {}},
-                                  {math::vec3(1.0, 0.0, -1.0), {}, {}},
-                                  {math::vec3(1.0, 0.0, 1.0), {}, {}},
-                                  {math::vec3(-1.0, 0.0, 1.0), {}, {}}},
+struct simulation_settings {
+  float l1{30.f}, l2{20.f}, width{5.f}, first_angle{0.f}, second_angle{0.f},
+      density{10.f};
+  std::vector<obstacle_info> obstacles;
+};
+
+struct square_center {
+  api_agnostic_geometry geometry{{{math::vec3(-0.5, 0.0, -0.5), {}, {}},
+                                  {math::vec3(0.5, 0.0, -0.5), {}, {}},
+                                  {math::vec3(0.5, 0.0, 0.5), {}, {}},
+                                  {math::vec3(-0.5, 0.0, 0.5), {}, {}}},
                                  {0, 1, 2, 2, 3, 0}};
-  scene_object_info placement;
   glfw_impl::renderable api_renderable;
 };
 
-struct model {
-  float height{70.f};
-  float radius{5.f};
-
-  simulation_settings settings;
-
-  scene_object_info placement;
-  api_agnostic_geometry geometry;
+struct square_right {
+  api_agnostic_geometry geometry{{{math::vec3(0.0, 0.0, -0.5), {}, {}},
+                                  {math::vec3(1.0, 0.0, -0.5), {}, {}},
+                                  {math::vec3(1.0, 0.0, 0.5), {}, {}},
+                                  {math::vec3(0.0, 0.0, 0.5), {}, {}}},
+                                 {0, 1, 2, 2, 3, 0}};
   glfw_impl::renderable api_renderable;
-
-  inline void reset() {
-    geometry.vertices.clear();
-    geometry.indices.clear();
-    mock_data::buildVerticesSmooth(100, height, radius, geometry.vertices,
-                                   geometry.indices);
-    glfw_impl::fill_renderable(geometry.vertices, geometry.indices,
-                               api_renderable);
-  }
 };
 
 } // namespace internal
 
 struct application_scene {
   internal::simulation_settings settings;
-  internal::model model;
-  internal::scene_grid grid;
+  internal::square_center centered_model;
+  internal::square_right right_model;
 
   bool init();
   void render(input_state &input);

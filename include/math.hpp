@@ -5,6 +5,7 @@
 
 #define GLM_FORCE_RADIANS
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 #define GLM_FORCE_RADIANS
 #include <glm/gtc/type_ptr.hpp>
 #define GLM_FORCE_RADIANS
@@ -46,6 +47,11 @@ inline mat4 get_projection_matrix(float fov_y_radians, float buffer_w,
                           clip_far);
 }
 
+inline mat4 get_ortho_matrix(float xmin, float xmax, float ymin, float ymax,
+                             float zmin, float zmax) {
+  return glm::ortho(xmin, xmax, ymin, ymax, zmin, zmax);
+}
+
 inline mat4 get_view_matrix(const vec3 &camera_pos, const vec3 &camera_front,
                             const vec3 &camera_up) {
   return glm::lookAt(camera_pos, camera_front, camera_up);
@@ -57,7 +63,7 @@ inline mat4 get_model_matrix(const vec3 &position, const vec3 &scale,
   const auto scale_m = glm::scale(glm::mat4(1.0f), scale);
   const auto rot_m = glm::toMat4(glm::quat(rotation_radians));
 
-  return trans_m * scale_m * rot_m;
+  return trans_m * rot_m * scale_m;
 }
 
 inline glm::quat slerp(glm::quat const &x, glm::quat const &y, float t) {
