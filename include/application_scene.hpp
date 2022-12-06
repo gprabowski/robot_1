@@ -18,6 +18,11 @@ namespace internal {
 //    * geometry
 //    * API object reference
 
+struct path {
+  int alpha{0}, beta{0};
+  bool selected{false};
+};
+
 struct obstacle_info {
   float width{2.f}, height{1.f};
   math::vec2 pos{0.f, 0.f};
@@ -28,8 +33,8 @@ struct simulation_settings {
       density{0.25f};
   std::vector<obstacle_info> obstacles;
 
-  math::vec2 start_point{0.f, 0.f};
-  math::vec2 end_point{0.f, 0.f};
+  math::vec2 start_point{-l1 - l2, 0.f};
+  math::vec2 end_point{-l1 - l2, 0.f};
 };
 
 struct square_center {
@@ -61,19 +66,29 @@ struct application_scene {
   internal::square_center centered_model;
   internal::square_right right_model;
 
-  std::array<unsigned char, 360 * 360> configurations;
+  std::array<glm::vec3, 360 * 360> configurations;
 
   std::optional<std::reference_wrapper<internal::obstacle_info>>
       selected_obstacle;
 
   bool init();
-  void run();
+  void fill_texture();
 
-  bool check_settings();
+  bool find_configs();
+  bool is_config_correct(float alpha, float beta);
   void render(input_state &input);
   bool handle_mouse(mouse_state &mouse);
 
+  float speed{5};
+
   std::optional<std::thread> worker;
+
+  glfw_impl::texture_t configurations_texture;
+
+  std::vector<internal::path> start_configs;
+  std::vector<internal::path> end_configs;
+
+  std::atomic<bool> worker_done{false};
 };
 
 } // namespace pusn

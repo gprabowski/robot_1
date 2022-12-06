@@ -35,11 +35,13 @@ void fill_texture(texture_t &texture, int x, int y,
     GLuint tmp;
     glCreateTextures(GL_TEXTURE_2D, 1, &tmp);
     texture.index = tmp;
+
     // color
     glTextureParameteri(tmp, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTextureParameteri(tmp, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTextureParameteri(tmp, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTextureParameteri(tmp, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
     if constexpr (std::is_same_v<TextureDataType, math::vec3>) {
       glTextureStorage2D(tmp, 1, GL_RGB32F, x, y);
     }
@@ -53,7 +55,7 @@ void fill_texture(texture_t &texture, int x, int y,
     }
 
     if constexpr (std::is_same_v<TextureDataType, unsigned char>) {
-      glTextureStorage2D(tmp, 1, GL_RGB8, x, y);
+      glTextureStorage2D(tmp, 1, GL_R8, x, y);
     }
 
     if constexpr (std::is_same_v<TextureDataType, char>) {
@@ -80,12 +82,12 @@ void fill_texture(texture_t &texture, int x, int y,
   }
 
   if constexpr (std::is_same_v<TextureDataType, unsigned char>) {
-    glTextureSubImage2D(texture.value(), 0, 0, 0, x, y, GL_RGB,
+    glTextureSubImage2D(texture.value(), 0, 0, 0, x, y, GL_RED,
                         GL_UNSIGNED_BYTE, values_to_fill);
   }
 
   if constexpr (std::is_same_v<TextureDataType, char>) {
-    glTextureSubImage2D(texture.value(), 0, 0, 0, x, y, GL_RGB,
+    glTextureSubImage2D(texture.value(), 0, 0, 0, x, y, GL_RED,
                         GL_UNSIGNED_BYTE, values_to_fill);
   }
 }

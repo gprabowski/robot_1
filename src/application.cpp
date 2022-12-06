@@ -22,7 +22,6 @@ void application::render_gui() { gui::render(input, scene); }
 void application::render_viewport() {
   static const glm::vec4 clear_color = {38.f / 255.f, 38.f / 255.f,
                                         38.f / 255.f, 1.00f};
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   ImGui::Begin("Movement Finder");
   viewport.bind();
   viewport.left = true;
@@ -41,7 +40,6 @@ void application::render_viewport() {
   ImGui::Image((void *)(uint64_t)t, s, {0, 1}, {1, 0});
   viewport.unbind();
   ImGui::End();
-  ImGui::PopStyleVar();
 
   glViewport(0, 0, chosen_api::last_frame_info::width,
              chosen_api::last_frame_info::height);

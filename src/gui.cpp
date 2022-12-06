@@ -12,6 +12,7 @@
 #include <ImGuiFileDialog.h>
 
 #include <chrono>
+#include <queue>
 
 namespace pusn {
 namespace gui {
@@ -224,11 +225,13 @@ void render_settings_gui(application_scene &scene) {
 
   ImGui::Begin("Settings");
 
+  ImGui::SliderFloat("Speed", &scene.speed, 0.f, 100.f);
+
   ImGui::SliderFloat("L1", &settings.l1, 0.f, 100.f);
   ImGui::SliderFloat("L2", &settings.l2, 0.f, 100.f);
   ImGui::SliderFloat("Width", &settings.width, 0.f, 100.f);
-  ImGui::SliderFloat("First Angle", &settings.first_angle, -180.f, 180.f);
-  ImGui::SliderFloat("Second Angle", &settings.second_angle, -180.f, 180.f);
+  ImGui::SliderFloat("First Angle", &settings.first_angle, 0.f, 360.f);
+  ImGui::SliderFloat("Second Angle", &settings.second_angle, 0.f, 360.f);
   ImGui::SliderFloat("Field Density", &settings.density, 0.f, 500.f);
 
   ImGui::SliderFloat2("Start Point", glm::value_ptr(settings.start_point),
@@ -240,11 +243,161 @@ void render_settings_gui(application_scene &scene) {
 }
 
 void render_actions_gui(application_scene &scene) {
+  static bool intersection{false};
   ImGui::Begin("Perform Actions");
 
-  if (ImGui::Button("Run")) {
-    scene.check_settings();
+  if (ImGui::Button("Find Configs")) {
+    ImGui::OpenPopup("Impossible Point");
+    if ((intersection = (!scene.find_configs()))) {
+    } else {
+      scene.fill_texture();
+    }
   }
+
+  if (ImGui::Button("Run")) {
+    std::optional<internal::path> start, end;
+
+    for (auto &c : scene.start_configs) {
+      if (c.selected) {
+        start = c;
+      }
+    }
+
+    for (auto &c : scene.end_configs) {
+      if (c.selected) {
+        end = c;
+      }
+    }
+
+    if (start.has_value() && end.has_value()) {
+      // find path by BFS
+      static std::array<bool, 360 * 360> bfs_table;
+
+      auto ang_clamp = [](int val) {
+        while (val >= 360) {
+          val -= 360;
+        }
+        while (val < 0) {
+          val += 360;
+        }
+
+        return val;
+      };
+
+      auto set = [&](int x, int y, bool val) {
+        x = ang_clamp(x);
+        y = ang_clamp(y);
+        bfs_table[y * 360 + x] = val;
+      };
+
+      auto get = [&](int x, int y) {
+        x = ang_clamp(x);
+        y = ang_clamp(y);
+        return bfs_table[y * 360 + x];
+      };
+
+      for (int tx = 0; tx < 360; ++tx) {
+        for (int ty = 0; ty < 360; ++ty) {
+          set(tx, ty, scene.configurations[tx + 360 * ty].x > 0.1f);
+        }
+      }
+
+      std::queue<std::pair<int, int>> coord_queue;
+      coord_queue.push({start.value().alpha, start.value().beta});
+      std::pair<int, int> current_point = {361, 361};
+
+      std::map<std::pair<int, int>, std::pair<int, int>> parents;
+
+      set(start.value().alpha, start.value().beta, false);
+
+      while (!coord_queue.empty() &&
+             (current_point.first != end.value().alpha ||
+              current_point.second != end.value().beta)) {
+        current_point = coord_queue.front();
+        coord_queue.pop();
+
+        LOGGER_INFO("{0} {1}", current_point.first, current_point.second);
+
+        if (get(current_point.first - 1, current_point.second)) {
+          std::pair<int, int> next_point{current_point.first - 1,
+                                         current_point.second};
+          next_point = {ang_clamp(next_point.first),
+                        ang_clamp(next_point.second)};
+          coord_queue.push(next_point);
+          parents[next_point] = current_point;
+          set(next_point.first, next_point.second, false);
+        }
+
+        if (get(current_point.first + 1, current_point.second)) {
+          std::pair<int, int> next_point{current_point.first + 1,
+                                         current_point.second};
+          next_point = {ang_clamp(next_point.first),
+                        ang_clamp(next_point.second)};
+          coord_queue.push(next_point);
+          parents[next_point] = current_point;
+          set(next_point.first, next_point.second, false);
+        }
+
+        if (get(current_point.first, current_point.second - 1)) {
+          std::pair<int, int> next_point{current_point.first,
+                                         current_point.second - 1};
+          next_point = {ang_clamp(next_point.first),
+                        ang_clamp(next_point.second)};
+          coord_queue.push(next_point);
+          parents[next_point] = current_point;
+          set(next_point.first, next_point.second, false);
+        }
+
+        if (get(current_point.first, current_point.second + 1)) {
+          std::pair<int, int> next_point{current_point.first,
+                                         current_point.second + 1};
+          next_point = {ang_clamp(next_point.first),
+                        ang_clamp(next_point.second)};
+          coord_queue.push(next_point);
+          parents[next_point] = current_point;
+          set(next_point.first, next_point.second, false);
+        }
+      }
+
+      if (current_point.first == end.value().alpha &&
+          current_point.second == end.value().beta) {
+        // path has been found
+        std::vector<std::pair<int, int>> path{current_point};
+        while (parents.contains(path[0])) {
+          path.insert(path.begin(), parents[path[0]]);
+        }
+        // here our path has been built
+        for (auto &elem : path) {
+          scene.configurations[360 * elem.second + elem.first] =
+              glm::vec3{0.f, 1.f, 0.f};
+        }
+
+        scene.worker = std::thread([path, &scene]() {
+          scene.worker_done = false;
+          for (auto &elem : path) {
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds{static_cast<int>(scene.speed)});
+            scene.settings.first_angle = elem.first;
+            scene.settings.second_angle = elem.second;
+          }
+
+          scene.worker_done = true;
+        });
+        glfw_impl::fill_texture(scene.configurations_texture, 360, 360,
+                                scene.configurations.data());
+      } else {
+
+        scene.configurations[360 * start.value().beta + start.value().alpha] =
+            glm::vec3{0.f, 1.f, 0.f};
+        scene.configurations[360 * end.value().beta + end.value().alpha] =
+            glm::vec3{0.f, 1.f, 0.f};
+        glfw_impl::fill_texture(scene.configurations_texture, 360, 360,
+                                scene.configurations.data());
+      }
+    }
+  }
+
+  ImGui::Text(intersection ? "Intersection" : "Clean");
 
   if (ImGui::Button("Add Obstacle")) {
     scene.settings.obstacles.push_back({10.f, 10.f, {0.f, 0.f}});
@@ -307,13 +460,77 @@ void render_obstacle_gui(application_scene &scene) {
   }
 }
 
+void render_texture(application_scene &scene) {
+  if (scene.configurations_texture.index.has_value()) {
+    ImGui::Begin("Configuration Space");
+    GLuint t = scene.configurations_texture.value();
+    auto s = ImGui::GetContentRegionAvail();
+    ImGui::Image((void *)(uint64_t)t, s, {0, 1}, {1, 0});
+    ImGui::End();
+  }
+}
+
+void render_config_choice(application_scene &scene) {
+  ImGui::Begin("Start Config Choice");
+
+  int idx = 0;
+  for (auto &config : scene.start_configs) {
+    std::string tree_id = std::string("Start Config #") + std::to_string(idx) +
+                          ("##") + std::to_string(idx);
+    if (ImGui::Selectable(tree_id.c_str(), config.selected)) {
+      for (auto &c : scene.start_configs) {
+        c.selected = false;
+      }
+      config.selected = !config.selected;
+      if (config.selected) {
+        // put arms into this position
+        scene.settings.first_angle = config.alpha;
+        scene.settings.second_angle = config.beta;
+      } else {
+        scene.settings.first_angle = 0.f;
+        scene.settings.second_angle = 0.f;
+      }
+    }
+    ++idx;
+  }
+
+  ImGui::End();
+
+  ImGui::Begin("End Config Choice");
+
+  idx = 0;
+  for (auto &config : scene.end_configs) {
+    std::string tree_id = std::string("End Config #") + std::to_string(idx) +
+                          ("##") + std::to_string(idx);
+    if (ImGui::Selectable(tree_id.c_str(), config.selected)) {
+      for (auto &c : scene.end_configs) {
+        c.selected = false;
+      }
+      config.selected = !config.selected;
+      if (config.selected) {
+        // put arms into this position
+        scene.settings.first_angle = config.alpha;
+        scene.settings.second_angle = config.beta;
+      } else {
+        scene.settings.first_angle = 0.f;
+        scene.settings.second_angle = 0.f;
+      }
+    }
+    ++idx;
+  }
+
+  ImGui::End();
+}
+
 void render(input_state &input, application_scene &scene) {
+  render_popups();
   render_performance_window();
   render_settings_gui(scene);
   render_actions_gui(scene);
   render_pos_helper(input, scene);
+  render_texture(scene);
   render_obstacle_gui(scene);
-  render_popups();
+  render_config_choice(scene);
 }
 
 void end_frame() {
@@ -338,14 +555,10 @@ void render_popups() {
   // Always center this window when appearing
   ImVec2 center = ImGui::GetMainViewport()->GetCenter();
   ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-  if (ImGui::BeginPopupModal("File Corrupted", NULL,
+  if (ImGui::BeginPopupModal("Impossible Point", NULL,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
-    ImGui::Text("The file you have pointed to is corrupted or wrongly "
-                "formatted!\n\n");
-    ImGui::Text("%s\n", gui_info::file_error_message.c_str());
+    ImGui::Text("Start or end point chosen are impossible to reach\n");
     ImGui::Separator();
-
     if (ImGui::Button("OK", ImVec2(120, 0))) {
       ImGui::CloseCurrentPopup();
     }
